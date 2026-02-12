@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Sandip Hostel Services{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forgot_password_link.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="max-width: 400px; margin: 4rem auto;">
+        <div class="card animate-scaleIn">
+            
+            <h2 class="card-header" style="text-align: center;">Login</h2>
+
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                
+                <div class="form-group animate-fadeIn">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" required>
+                </div>
+
+                <div class="form-group animate-fadeIn" style="animation-delay: 0.1s;">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+
+                <!-- Forgot Password -->
+                <div class="forgot-password-wrapper animate-fadeIn" style="animation-delay: 0.2s;">
+                    <a href="{{ url_for('auth.forgot_password') }}" class="forgot-password-link">
+                        Forgot password?
+                    </a>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Login
+                </button>
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

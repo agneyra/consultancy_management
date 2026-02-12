@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}" class="active">Announcements</a></li>
+            <li><a href="{{ url_for('admin.payment_history') }}">Payment History</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Deadline Announcements</h1>
+        </div>
+        
+        <div class="card">
+            <h3 class="card-header">Create New Announcement</h3>
+            <form method="POST" action="{{ url_for('admin.add_announcement') }}">
+                <div class="form-group">
+                    <label class="form-label">Announcement Message</label>
+                    <textarea name="message" class="form-control" rows="3" 
+                              placeholder="e.g., Fee payment deadline is December 31, 2024" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Announcement</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h3 class="card-header">All Announcements</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Message</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for announcement in announcements %}
+                        {% if announcement.is_active %}
+                        <tr>
+                            <td>{{ announcement.message }}</td>
+                            <td>{{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin.delete_announcement', id=announcement.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Remove this announcement?')">
+                                        Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

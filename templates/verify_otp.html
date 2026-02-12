@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Verify OTP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="max-width: 400px; margin: 4rem auto;">
+        <div class="card">
+            <h3 class="card-header" style="text-align:center;">Verify OTP</h3>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label>OTP</label>
+                    <input type="text" name="otp" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    Verify
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

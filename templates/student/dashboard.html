@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Student Portal</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('student.dashboard') }}" class="active">Dashboard</a></li>
+            <li><a href="{{ url_for('student.pay_fees') }}">Pay Fees</a></li>
+            <li><a href="{{ url_for('student.transaction_history') }}">Transaction History</a></li>
+            <li><a href="{{ url_for('student.change_password') }}">Change Password</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="user-info">
+            <div class="user-avatar">{{ student.full_name[0] }}</div>
+            <div class="user-details">
+                <h3>{{ student.full_name }}</h3>
+                <p>PRN: {{ student.prn }} | Branch: {{ student.branch }}</p>
+                <p>Email: {{ student.email }}</p>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Fees</div>
+                <div class="stat-value">₹{{ "{:,.2f}".format(stats.total_fees) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Paid</div>
+                <div class="stat-value">₹{{ "{:,.2f}".format(stats.fees_paid) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Pending</div>
+                <div class="stat-value">₹{{ "{:,.2f}".format(stats.fees_pending) }}</div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h3 class="chart-title">Fee Distribution</h3>
+            <canvas id="feeChart" 
+                    data-total="{{ stats.total_fees }}" 
+                    data-paid="{{ stats.fees_paid }}" 
+                    data-pending="{{ stats.fees_pending }}"></canvas>
+        </div>
+        
+        {% if stats.fees_pending > 0 %}
+        <div class="card" style="background-color: #fef3c7; border-left: 4px solid #f59e0b;">
+            <h3 style="color: #92400e;">Payment Reminder</h3>
+            <p style="color: #92400e;">You have pending fees of ₹{{ "{:,.2f}".format(stats.fees_pending) }}. Please make payment soon.</p>
+            <a href="{{ url_for('student.pay_fees') }}" class="btn btn-primary" style="margin-top: 1rem;">Pay Now</a>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

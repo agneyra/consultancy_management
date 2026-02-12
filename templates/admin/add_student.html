@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Add Students{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}" class="active">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin.payment_history') }}">Payment History</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Add Students</h1>
+        </div>
+        
+        <!-- Add Single Student Card -->
+        <div class="card">
+            <h3 class="card-header">Add Single Student</h3>
+            <form method="POST" action="{{ url_for('admin.add_single_student') }}">
+                <div class="form-group">
+                    <label class="form-label">PRN</label>
+                    <input type="text" name="prn" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="full_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Branch</label>
+                    <input type="text" name="branch" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" name="phone" class="form-control" required>
+                    <small style="color: var(--text-secondary);">Phone number will be used as the student's password</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Select Hostel</label>
+                    <select name="consultancy_id" class="form-control" required>
+                        <option value="">-- Select Hostel --</option>
+                        {% for consultancy in consultancies %}
+                        <option value="{{ consultancy.id }}">{{ consultancy.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Fees (₹)</label>
+                    <input type="number" name="total_fees" class="form-control" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fees Paid (₹)</label>
+                    <input type="number" name="fees_paid" class="form-control" step="0.01" value="0" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Student</button>
+            </form>
+        </div>
+        
+        <hr style="margin: 2rem 0;">
+        
+        <!-- Upload Excel File Card -->
+        <div class="card">
+            <h3 class="card-header">Upload Excel File</h3>
+            <p style="margin-bottom: 1rem;">Upload an Excel file containing student data. The file must have these columns: PRN, Name, Branch, Email, Phone, Hostel, Total_Fees, Fees_Paid, Pending_Fee</p>
+            
+            <button onclick="downloadSampleTemplate()" class="btn btn-secondary" style="margin-bottom: 1rem;">
+                Download Sample Template
+            </button>
+            
+            <form id="excelUploadForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="form-label">Select Excel File (.xlsx or .xls)</label>
+                    <input type="file" id="excelFile" accept=".xlsx,.xls" class="form-control" required>
+                    <small id="fileName" style="color: var(--text-secondary);">No file selected</small>
+                </div>
+                <button type="submit" id="uploadBtn" class="btn btn-primary">Upload Students</button>
+            </form>
+            
+            <div id="uploadResults" style="margin-top: 1.5rem;"></div>
+        </div>
+        
+        <div class="card">
+            <h3 class="card-header">Instructions</h3>
+            <ol style="margin-left: 1.5rem;">
+                <li>Download the sample template to see the required format</li>
+                <li>Fill in your student data following the same format</li>
+                <li><strong>Required columns:</strong> PRN, Name, Branch, Email, Phone, Hostel, Total_Fees, Fees_Paid, Pending_Fee</li>
+                <li><strong>Important:</strong> Phone number is REQUIRED - it will be used as the student's password</li>
+                <li>Make sure the Hostel name matches exactly with names in the system</li>
+                <li>Upload the completed Excel file</li>
+                <li>Students will use: <strong>PRN as username</strong> and <strong>Phone Number as password</strong></li>
+            </ol>
+            <div style="background-color: #d1f4ff; padding: 1rem; border-radius: 0.375rem; margin-top: 1rem; border-left: 4px solid #0ea5e9;">
+                <h4 style="color: #0c4a6e; margin-bottom: 0.5rem;">Student Login Credentials:</h4>
+                <p style="color: #0c4a6e; margin: 0.25rem 0;"><strong>Username:</strong> Student's PRN (e.g., 2023001)</p>
+                <p style="color: #0c4a6e; margin: 0.25rem 0;"><strong>Password:</strong> Student's Phone Number (e.g., 9876543210)</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/excel_upload.js') }}"></script>
+<script>
+// Update the downloadSampleTemplate function to include new columns
+function downloadSampleTemplate() {
+    const sampleData = [
+        ['PRN', 'Name', 'Branch', 'Email', 'Phone', 'Hostel', 'Total_Fees', 'Fees_Paid', 'Pending_Fee'],
+        ['2023001', 'John Doe', 'Computer Science', 'john@example.com', '9876543210', 'ABC Hostel', '50000', '10000', '40000'],
+        ['2023002', 'Jane Smith', 'Electronics', 'jane@example.com', '9876543211', 'ABC Hostel', '45000', '0', '45000']
+    ];
+    
+    let csv = sampleData.map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Agent Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('agent.dashboard') }}" class="active">Dashboard</a></li>
+            <li><a href="{{ url_for('agent.students_data') }}">View Students</a></li>
+            <li><a href="{{ url_for('agent.payment_history') }}">Payment History</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Agent Dashboard</h1>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Fees</div>
+                <div class="stat-value">₹{{ "{:,.2f}".format(stats.total_fees) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Paid</div>
+                <div class="stat-value">₹{{ "{:,.2f}".format(stats.fees_paid) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Pending</div>
+                <div class="stat-value">₹{{ "{:,.2f}".format(stats.fees_pending) }}</div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h3 class="chart-title">Fee Distribution</h3>
+            <canvas id="feeChart" 
+                    data-total="{{ stats.total_fees }}" 
+                    data-paid="{{ stats.fees_paid }}" 
+                    data-pending="{{ stats.fees_pending }}"></canvas>
+        </div>
+        
+        <div class="card">
+            <h3 class="card-header">Quick Stats</h3>
+            <p>Total Students: {{ stats.total_students }}</p>
+        </div>
+    </main>
+</div>
+{% endblock %}

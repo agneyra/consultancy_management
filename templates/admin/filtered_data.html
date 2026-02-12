@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}View Filtered Data{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar animate-slideInLeft">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}" class="active">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin.payment_history') }}">Payment History</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header animate-fadeIn">
+            <h1 class="page-title">View Filtered Data</h1>
+        </div>
+        
+        <div class="filter-section animate-fadeIn">
+            <form method="GET" action="{{ url_for('admin.filtered_data') }}" id="filterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="form-label">Filter by Hostel</label>
+                        <select name="consultancy_id" class="form-control">
+                            <option value="">All Hostels</option>
+                            {% for consultancy in consultancies %}
+                            <option value="{{ consultancy.id }}" {% if selected_consultancy == consultancy.id %}selected{% endif %}>
+                                {{ consultancy.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="form-label">Filter by Pending Fee</label>
+                        <select name="pending_filter" class="form-control">
+                            <option value="">All Students</option>
+                            <option value="has_pending" {% if request.args.get('pending_filter') == 'has_pending' %}selected{% endif %}>Has Pending Fees</option>
+                            <option value="no_pending" {% if request.args.get('pending_filter') == 'no_pending' %}selected{% endif %}>No Pending Fees</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="form-label">Search Student</label>
+                        <input type="text" name="search" class="form-control" placeholder="Search by PRN, Name, Email..." value="{{ request.args.get('search', '') }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="action-buttons animate-fadeIn">
+            <a href="{{ url_for('admin.export_students', consultancy_id=selected_consultancy if selected_consultancy else '') }}" 
+               class="btn btn-success">Export to Excel</a>
+        </div>
+        
+        <div class="card animate-fadeIn">
+            <h3 class="card-header">Students Data ({{ students|length }} students)</h3>
+            <div style="background-color: #d1f4ff; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
+                <p style="color: #0c4a6e; margin: 0;">
+                    <strong>💡 Tip:</strong> Click "Edit" button to enable editing for that row. Click "Save" to save changes or "Cancel" to discard.
+                </p>
+            </div>
+            <div class="table-wrapper">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>PRN</th>
+                            <th>Name</th>
+                            <th>Branch</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Hostel</th>
+                            <th>Total Fees</th>
+                            <th>Paid</th>
+                            <th>Pending</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr data-student-id="{{ student.id }}" data-consultancy-id="{{ student.consultancy_id }}" class="animate-fadeIn">
+                            <td class="view-mode" data-field="prn">{{ student.prn }}</td>
+                            <td class="view-mode" data-field="full_name">{{ student.full_name }}</td>
+                            <td class="view-mode" data-field="branch">{{ student.branch }}</td>
+                            <td class="view-mode" data-field="email">{{ student.email }}</td>
+                            <td class="view-mode" data-field="phone">{{ student.phone }}</td>
+                            <td class="view-mode" data-field="consultancy">{{ student.consultancy.name }}</td>
+                            <td class="view-mode" data-field="total_fees">{{ student.total_fees }}</td>
+                            <td>₹{{ "{:,.2f}".format(student.fees_paid) }}</td>
+                            <td>₹{{ "{:,.2f}".format(student.fees_pending) }}</td>
+                            <td>
+                                <button onclick="enableEdit(this)" class="btn btn-primary edit-btn" style="padding: 5px 15px; margin-right: 5px;">
+                                    Edit
+                                </button>
+                                <button onclick="saveChanges(this)" class="btn btn-success save-btn" style="padding: 5px 15px; margin-right: 5px; display: none;">
+                                    Save
+                                </button>
+                                <button onclick="cancelEdit(this)" class="btn btn-secondary cancel-btn" style="padding: 5px 15px; margin-right: 5px; display: none;">
+                                    Cancel
+                                </button>
+                                <button onclick="deleteStudent('{{ student.id }}')" class="btn btn-danger" style="padding: 5px 15px;">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    
+    .edit-mode input,
+    .edit-mode select {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #0ea5e9;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .edit-mode {
+        background-color: #f0f9ff;
+    }
+</style>
+
+<script>
+// Store original data for each row
+let originalData = {};
+
+// Store consultancies data
+let consultancies = [
+    {% for consultancy in consultancies %}
+    { id: {{ consultancy.id }}, name: "{{ consultancy.name }}" },
+    {% endfor %}
+];
+
+function enableEdit(button) {
+    const row = button.closest('tr');
+    const studentId = row.dataset.studentId;
+    const cells = row.querySelectorAll('.view-mode');
+    
+    // Store original data
+    originalData[studentId] = {};
+    
+    cells.forEach(cell => {
+        const field = cell.dataset.field;
+        const value = cell.textContent.trim();
+        originalData[studentId][field] = value;
+        
+        // Replace cell content with input field
+        if (field === 'consultancy') {
+            // Create dropdown for consultancy
+            let select = '<select class="form-control" data-field="consultancy_id">';
+            consultancies.forEach(c => {
+                const selected = c.id == row.dataset.consultancyId ? 'selected' : '';
+                select += `<option value="${c.id}" ${selected}>${c.name}</option>`;
+            });
+            select += '</select>';
+            cell.innerHTML = select;
+            cell.classList.add('edit-mode');
+        } else if (field === 'total_fees') {
+            cell.innerHTML = `<input type="number" step="0.01" value="${value}" data-field="${field}">`;
+            cell.classList.add('edit-mode');
+        } else {
+            cell.innerHTML = `<input type="text" value="${value}" data-field="${field}">`;
+            cell.classList.add('edit-mode');
+        }
+    });
+    
+    // Show save/cancel buttons, hide edit button
+    row.querySelector('.edit-btn').style.display = 'none';
+    row.querySelector('.save-btn').style.display = 'inline-block';
+    row.querySelector('.cancel-btn').style.display = 'inline-block';
+}
+
+function cancelEdit(button) {
+    const row = button.closest('tr');
+    const studentId = row.dataset.studentId;
+    const cells = row.querySelectorAll('.view-mode');
+    
+    // Restore original values
+    cells.forEach(cell => {
+        const field = cell.dataset.field;
+        cell.textContent = originalData[studentId][field];
+        cell.classList.remove('edit-mode');
+    });
+    
+    // Show edit button, hide save/cancel buttons
+    row.querySelector('.edit-btn').style.display = 'inline-block';
+    row.querySelector('.save-btn').style.display = 'none';
+    row.querySelector('.cancel-btn').style.display = 'none';
+    
+    delete originalData[studentId];
+}
+
+function saveChanges(button) {
+    const row = button.closest('tr');
+    const studentId = row.dataset.studentId;
+    const cells = row.querySelectorAll('.view-mode');
+    
+    // Collect updated data
+    const data = {};
+    cells.forEach(cell => {
+        const input = cell.querySelector('input, select');
+        if (input) {
+            const field = input.dataset.field;
+            data[field] = input.value;
+        }
+    });
+    
+    // Show loading
+    button.textContent = 'Saving...';
+    button.disabled = true;
+    
+    // Send update request
+    fetch('/admin/students/update/' + studentId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Update view mode with new values
+            cells.forEach(cell => {
+                const field = cell.dataset.field;
+                if (field === 'consultancy') {
+                    cell.textContent = result.student.consultancy_name;
+                    row.dataset.consultancyId = result.student.consultancy_id;
+                } else if (field in result.student) {
+                    cell.textContent = result.student[field];
+                }
+                cell.classList.remove('edit-mode');
+            });
+            
+            // Update pending fees
+            const pendingCell = row.cells[8];
+            pendingCell.textContent = '₹' + result.student.fees_pending.toFixed(2);
+            
+            // Show edit button, hide save/cancel buttons
+            row.querySelector('.edit-btn').style.display = 'inline-block';
+            row.querySelector('.save-btn').style.display = 'none';
+            row.querySelector('.cancel-btn').style.display = 'none';
+            
+            alert('Student updated successfully!');
+            delete originalData[studentId];
+        } else {
+            alert('Error updating student: ' + result.message);
+            button.textContent = 'Save';
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating student');
+        button.textContent = 'Save';
+        button.disabled = false;
+    });
+}
+
+function deleteStudent(studentId) {
+    if (!confirm('Are you sure you want to delete this student? This action cannot be undone and will delete all associated data.')) {
+        return;
+    }
+    
+    fetch('/admin/students/delete/' + studentId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.querySelector('tr[data-student-id="' + studentId + '"]');
+            row.remove();
+            alert('Student deleted successfully from database');
+        } else {
+            alert('Error deleting student: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting student');
+    });
+}
+</script>
+{% endblock %}

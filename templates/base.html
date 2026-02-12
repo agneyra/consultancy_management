@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sandip Hostel Services{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Fetch and display active announcements dynamically -->
+    <div id="announcementBanner" style="display: none;"></div>
+
+    <nav class="navbar animate-slideInDown">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="https://i.ibb.co/kgsS6RH7/sandip-logo.jpg" 
+                     alt="SHS Logo" 
+                     class="logo-img">
+                     <!-- <a href="https://imgbb.com/"><img src="https://i.ibb.co/kgsS6RH7/sandip-logo.jpg" alt="sandip logo" border="0"></a> -->
+                <span>Sandip Hostel Services</span>
+            </a>
+            <ul class="nav-links">
+                {% if current_user.is_authenticated %}
+                    <li class="animate-fadeIn"><a href="#">Welcome, {{ current_user.username }}!</a></li>
+                    <li class="animate-fadeIn"><a href="{{ url_for('auth.logout') }}" class="btn-login">Logout</a></li>
+                {% else %}
+                    <li class="animate-fadeIn"><a href="{{ url_for('auth.login') }}" class="btn-login">Login</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} animate-slideInDown">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="page-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        // Add scroll animation to navbar
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Fetch and display announcements dynamically
+        function loadAnnouncements() {
+            fetch('/api/active-announcements')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.announcements.length > 0) {
+                        const banner = document.getElementById('announcementBanner');
+                        let scrollContent = '';
+                        
+                        // Duplicate announcements for seamless scrolling
+                        data.announcements.forEach(announcement => {
+                            scrollContent += `<span class="announcement-item">📢 ${announcement.message}</span>`;
+                        });
+                        scrollContent += scrollContent; // Duplicate for continuous scroll
+                        
+                        banner.innerHTML = `
+                            <div class="announcement-banner animate-slideInDown">
+                                <div class="announcement-scroll">
+                                    ${scrollContent}
+                                </div>
+                            </div>
+                        `;
+                        banner.style.display = 'block';
+                    } else {
+                        document.getElementById('announcementBanner').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading announcements:', error);
+                });
+        }
+
+        // Load announcements on page load
+        document.addEventListener('DOMContentLoaded', loadAnnouncements);
+        
+        // Refresh announcements every 30 seconds
+        setInterval(loadAnnouncements, 30000);
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

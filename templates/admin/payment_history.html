@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Payment History{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin.payment_history') }}" class="active">Payment History</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Payment History</h1>
+        </div>
+        
+        <div class="search-bar">
+            <form method="GET" action="{{ url_for('admin.payment_history') }}" style="display: flex; gap: 0.5rem; width: 100%;">
+                <input type="text" name="search" class="search-input" 
+                       placeholder="Search by Transaction ID, Student Name, or PRN..." 
+                       value="{{ search }}">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('admin.export_payment_history') }}" class="btn btn-success">Export to Excel</a>
+        </div>
+        
+        <div class="card">
+            <h3 class="card-header">All Transactions ({{ transactions|length }})</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Student Name</th>
+                            <th>PRN</th>
+                            <th>Branch</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for txn in transactions %}
+                        <tr>
+                            <td>{{ txn.transaction_id }}</td>
+                            <td>{{ txn.student.full_name }}</td>
+                            <td>{{ txn.student.prn }}</td>
+                            <td>{{ txn.student.branch }}</td>
+                            <td>₹{{ "{:,.2f}".format(txn.amount) }}</td>
+                            <td>{{ txn.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if txn.status == 'completed' %}
+                                <span class="badge badge-success">Completed</span>
+                                {% elif txn.status == 'pending' %}
+                                <span class="badge badge-warning">Pending</span>
+                                {% else %}
+                                <span class="badge badge-danger">Failed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

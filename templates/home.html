@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Sandip Hostel Services{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Home page specific styles */
+    .home-container {
+        min-height: calc(100vh - 120px);
+        background-image: url('https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        position: relative;
+    }
+    
+    /* Overlay for better text readability */
+    .home-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(70deg, rgba(173, 0, 0, 0.495) 30%, rgba(113, 121, 125, 0.705) 70%);
+    }
+    
+    .home-content {
+        position: relative;
+        z-index: 1;
+        color: white;
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    
+    .home-content h1 {
+        font-size: 3.5rem;
+        color: white;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        font-weight: 800;
+    }
+    
+    .home-content p {
+        font-size: 1.5rem;
+        color: rgba(255, 255, 255, 0.95);
+        margin-bottom: 2rem;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    .home-content .btn-primary {
+        font-size: 1.25rem;
+        padding: 1rem 2.5rem;
+        background-color: #e31b1b;
+        color: white;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .home-content .btn-primary:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        background-color: #f8fafc;
+    }
+    
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-top: 4rem;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .feature-card {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-10px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .feature-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    
+    .feature-card h3 {
+        color: white;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .feature-card p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1rem;
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .home-content h1 {
+            font-size: 2.5rem;
+        }
+        
+        .home-content p {
+            font-size: 1.2rem;
+        }
+        
+        .features-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <div class="home-content animate-fadeIn">
+        <h1>
+            Sandip Hostel Services
+        </h1>
+        <p>
+            Streamline your hostel operations with our comprehensive management platform
+        </p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+            Get Started →
+        </a>
+        
+        <div class="features-grid">
+            <div class="feature-card stagger-item">
+                <span class="feature-icon">🎓</span>
+                <h3>Student Management</h3>
+                <p>Easy import and management of student data with Excel integration</p>
+            </div>
+            <div class="feature-card stagger-item">
+                <span class="feature-icon">💳</span>
+                <h3>Payment Processing</h3>
+                <p>Secure payment gateway integration with real-time tracking</p>
+            </div>
+            <div class="feature-card stagger-item">
+                <span class="feature-icon">📊</span>
+                <h3>Analytics Dashboard</h3>
+                <p>Real-time insights and comprehensive reports at your fingertips</p>
+            </div>
+            <div class="feature-card stagger-item">
+                <span class="feature-icon">🔔</span>
+                <h3>Announcements</h3>
+                <p>Keep everyone informed instantly with live notifications</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

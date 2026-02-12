@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Hostels{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar animate-slideInLeft">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}" class="active">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin.payment_history') }}">Payment History</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header animate-fadeIn">
+            <h1 class="page-title">Manage Hostels</h1>
+        </div>
+        
+        <button onclick="openModal('addConsultancyModal')" class="btn btn-primary animate-pulse">Add New Hostel</button>
+        
+        <div class="card animate-fadeIn">
+            <h3 class="card-header">Hostels List</h3>
+            <div style="background-color: #d1f4ff; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
+                <p style="color: #0c4a6e; margin: 0;">
+                    <strong>💡 Note:</strong> Editing hostel details will not affect student data. Deleting a hostel will only deactivate it (students remain in system).
+                </p>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Contact Person</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Agent Username</th>
+                            <th>Students</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consultancy in consultancies %}
+                        {% if consultancy.is_active %}
+                        <tr class="animate-fadeIn">
+                            <td>{{ consultancy.name }}</td>
+                            <td>{{ consultancy.contact_person }}</td>
+                            <td>{{ consultancy.email }}</td>
+                            <td>{{ consultancy.phone }}</td>
+                            <td>
+                                {% set agent = consultancy.agents | selectattr('role', 'equalto', 'agent') | first %}
+                                {{ agent.username if agent else 'N/A' }}
+                            </td>
+                            <td>{{ consultancy.students | length }}</td>
+                            <td>
+                                <button onclick="openEditModal({{ consultancy.id }})" class="btn btn-primary" style="padding: 5px 15px; margin-right: 5px;">
+                                    Edit
+                                </button>
+                                <button onclick="deactivateConsultancy({{ consultancy.id }}, '{{ consultancy.name }}')" class="btn btn-danger" style="padding: 5px 15px;">
+                                    Deactivate
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Add Hostel Modal -->
+<div id="addConsultancyModal" class="modal">
+    <div class="modal-content animate-scaleIn">
+        <div class="modal-header">
+            <h2>Add New Hostel</h2>
+            <span class="close" onclick="closeModal('addConsultancyModal')">&times;</span>
+        </div>
+        <form method="POST" action="{{ url_for('admin.add_consultancy') }}">
+            <div class="form-group">
+                <label class="form-label">Hostel Name</label>
+                <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contact Person</label>
+                <input type="text" name="contact_person" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="tel" name="phone" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <textarea name="address" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Gateway ID</label>
+                <input type="text" name="payment_gateway_id" class="form-control" placeholder="Razorpay Key ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Gateway Key</label>
+                <input type="text" name="payment_gateway_key" class="form-control" placeholder="Razorpay Secret Key">
+            </div>
+            <hr>
+            <h3>Agent Login Details</h3>
+            <div class="form-group">
+                <label class="form-label">Agent Username</label>
+                <input type="text" name="agent_username" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Agent Password</label>
+                <input type="password" name="agent_password" class="form-control" required>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Add Hostel</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addConsultancyModal')" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Hostel Modal -->
+<div id="editConsultancyModal" class="modal">
+    <div class="modal-content animate-scaleIn">
+        <div class="modal-header">
+            <h2>Edit Hostel</h2>
+            <span class="close" onclick="closeModal('editConsultancyModal')">&times;</span>
+        </div>
+        <form id="editConsultancyForm">
+            <input type="hidden" id="edit_consultancy_id">
+            <input type="hidden" id="edit_agent_id">
+            
+            <div class="form-group">
+                <label class="form-label">Hostel Name</label>
+                <input type="text" id="edit_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contact Person</label>
+                <input type="text" id="edit_contact_person" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" id="edit_email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="tel" id="edit_phone" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <textarea id="edit_address" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Gateway ID</label>
+                <input type="text" id="edit_payment_gateway_id" class="form-control" placeholder="Razorpay Key ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Gateway Key</label>
+                <input type="text" id="edit_payment_gateway_key" class="form-control" placeholder="Razorpay Secret Key">
+            </div>
+            <hr>
+            <h3>Agent Login Details</h3>
+            <div class="form-group">
+                <label class="form-label">Agent Username</label>
+                <input type="text" id="edit_agent_username" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Agent Password (leave blank to keep current)</label>
+                <input type="password" id="edit_agent_password" class="form-control" placeholder="Enter new password or leave blank">
+                <small style="color: var(--text-secondary);">Only enter if you want to change the agent's password</small>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editConsultancyModal')" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .modal {
+        overflow-y: auto;
+    }
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .table-wrapper {
+        overflow-x: auto;
+    }
+</style>
+
+<script>
+// Store consultancy data
+let consultanciesData = {};
+
+{% for consultancy in consultancies %}
+{% set agent = consultancy.agents | selectattr('role', 'equalto', 'agent') | first %}
+consultanciesData[{{ consultancy.id }}] = {
+    id: {{ consultancy.id }},
+    name: "{{ consultancy.name }}",
+    contact_person: "{{ consultancy.contact_person }}",
+    email: "{{ consultancy.email }}",
+    phone: "{{ consultancy.phone }}",
+    address: "{{ consultancy.address or '' }}",
+    payment_gateway_id: "{{ consultancy.payment_gateway_id or '' }}",
+    payment_gateway_key: "{{ consultancy.payment_gateway_key or '' }}",
+    agent_id: {{ agent.id if agent else 'null' }},
+    agent_username: "{{ agent.username if agent else '' }}"
+};
+{% endfor %}
+
+function openEditModal(consultancyId) {
+    const consultancy = consultanciesData[consultancyId];
+    
+    // Populate form fields
+    document.getElementById('edit_consultancy_id').value = consultancy.id;
+    document.getElementById('edit_agent_id').value = consultancy.agent_id || '';
+    document.getElementById('edit_name').value = consultancy.name;
+    document.getElementById('edit_contact_person').value = consultancy.contact_person;
+    document.getElementById('edit_email').value = consultancy.email;
+    document.getElementById('edit_phone').value = consultancy.phone;
+    document.getElementById('edit_address').value = consultancy.address;
+    document.getElementById('edit_payment_gateway_id').value = consultancy.payment_gateway_id;
+    document.getElementById('edit_payment_gateway_key').value = consultancy.payment_gateway_key;
+    document.getElementById('edit_agent_username').value = consultancy.agent_username;
+    document.getElementById('edit_agent_password').value = ''; // Always empty for security
+    
+    // Open modal
+    document.getElementById('editConsultancyModal').style.display = 'block';
+}
+
+document.getElementById('editConsultancyForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const consultancyId = document.getElementById('edit_consultancy_id').value;
+    const agentId = document.getElementById('edit_agent_id').value;
+    const agentPassword = document.getElementById('edit_agent_password').value;
+    
+    const data = {
+        name: document.getElementById('edit_name').value,
+        contact_person: document.getElementById('edit_contact_person').value,
+        email: document.getElementById('edit_email').value,
+        phone: document.getElementById('edit_phone').value,
+        address: document.getElementById('edit_address').value,
+        payment_gateway_id: document.getElementById('edit_payment_gateway_id').value,
+        payment_gateway_key: document.getElementById('edit_payment_gateway_key').value,
+        agent_id: agentId,
+        agent_username: document.getElementById('edit_agent_username').value,
+        agent_password: agentPassword // Will be empty if not changing
+    };
+    
+    // Show loading
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+    
+    fetch('/admin/consultancies/update/' + consultancyId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Hostel updated successfully!');
+            closeModal('editConsultancyModal');
+            window.location.reload();
+        } else {
+            alert('Error updating hostel: ' + result.message);
+            submitBtn.textContent = 'Save Changes';
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating hostel: ' + error.message);
+        submitBtn.textContent = 'Save Changes';
+        submitBtn.disabled = false;
+    });
+});
+
+function deactivateConsultancy(consultancyId, consultancyName) {
+    if (!confirm(`Are you sure you want to deactivate "${consultancyName}"?\n\nStudents will remain in the system but this hostel will be hidden from active lists.`)) {
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/consultancies/deactivate/${consultancyId}`;
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}
