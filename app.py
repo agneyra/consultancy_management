@@ -88,7 +88,19 @@ def get_active_announcements():
             'message': str(e),
             'announcements': []
         }), 500
+import os
 
+# Check if we are running on Vercel
+IS_VERCEL = "VERCEL" in os.environ
+
+UPLOAD_FOLDER = 'static/uploads'
+
+# Only create the directory if we are NOT on Vercel
+if not IS_VERCEL:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+else:
+    # On Vercel, use the only writable directory available
+    UPLOAD_FOLDER = '/tmp'
 
 if __name__ == '__main__':
     app.run(debug=True)
