@@ -11,6 +11,9 @@ from utils.email import mail
 app = Flask(__name__)
 app.config.from_object(Config)
 
+import sys, setuptools
+sys.modules['pkg_resources'] = setuptools.pkg_resources
+
 IS_VERCEL = "VERCEL" in os.environ
 
 if IS_VERCEL:
