@@ -27,12 +27,13 @@
             <form method="GET" action="{{ url_for('admin.filtered_data') }}" id="filterForm">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label class="form-label">Filter by Hostel</label>
-                        <select name="consultancy_id" class="form-control">
+                        <label class="form-label">Filter by Hostel Code</label>
+                        <select name="hostel_code" class="form-control">
                             <option value="">All Hostels</option>
                             {% for consultancy in consultancies %}
-                            <option value="{{ consultancy.id }}" {% if selected_consultancy == consultancy.id %}selected{% endif %}>
-                                {{ consultancy.name }}
+                            <option value="{{ consultancy.hostel_code }}"
+                                {% if selected_hostel_code == consultancy.hostel_code %}selected{% endif %}>
+                                {{ consultancy.hostel_code }} — {{ consultancy.name }}
                             </option>
                             {% endfor %}
                         </select>
@@ -55,7 +56,7 @@
         </div>
         
         <div class="action-buttons animate-fadeIn">
-            <a href="{{ url_for('admin.export_students', consultancy_id=selected_consultancy if selected_consultancy else '') }}" 
+            <a href="{{ url_for('admin.export_students', hostel_code=selected_hostel_code if selected_hostel_code else '') }}" 
                class="btn btn-success">Export to Excel</a>
         </div>
         
@@ -75,7 +76,8 @@
                             <th>Branch</th>
                             <th>Email</th>
                             <th>Phone</th>
-                            <th>Hostel</th>
+                            <th>Hostel Code</th>
+                            <th>Hostel Name</th>
                             <th>Total Fees</th>
                             <th>Paid</th>
                             <th>Pending</th>
@@ -84,18 +86,27 @@
                     </thead>
                     <tbody>
                         {% for student in students %}
-                        <tr data-student-id="{{ student.id }}" data-consultancy-id="{{ student.consultancy_id }}" class="animate-fadeIn">
+                        <tr data-student-id="{{ student.id }}" data-consultancy-id="{{ student.consultancy_id }}" data-hostel-code="{{ student.hostel_code }}" class="animate-fadeIn">
                             <td class="view-mode" data-field="prn">{{ student.prn }}</td>
                             <td class="view-mode" data-field="full_name">{{ student.full_name }}</td>
                             <td class="view-mode" data-field="branch">{{ student.branch }}</td>
                             <td class="view-mode" data-field="email">{{ student.email }}</td>
                             <td class="view-mode" data-field="phone">{{ student.phone }}</td>
-                            <td class="view-mode" data-field="consultancy">{{ student.consultancy.name }}</td>
-                            <td class="view-mode" data-field="total_fees">{{ student.total_fees }}</td>
+                            <td class="view-mode" data-field="consultancy_id">
+                                {{ student.consultancy.hostel_code }}
+                            </td>
+
+                            <td>
+                                {{ student.consultancy.name }}
+                            </td>
+
+                            <td class="view-mode" data-field="total_fees">
+                                {{ student.total_fees }}
+                            </td>
                             <td>₹{{ "{:,.2f}".format(student.fees_paid) }}</td>
                             <td>₹{{ "{:,.2f}".format(student.fees_pending) }}</td>
                             <td>
-                                <button onclick="enableEdit(this)" class="btn btn-primary edit-btn" style="padding: 5px 15px; margin-right: 5px;">
+                                <button onclick="enableEdit(this)" class="btn btn-primary edit-btn" style="padding: 5px 15px; margin-right: 5px; background-color: #4b4b4b;">
                                     Edit
                                 </button>
                                 <button onclick="saveChanges(this)" class="btn btn-success save-btn" style="padding: 5px 15px; margin-right: 5px; display: none;">
@@ -143,7 +154,11 @@ let originalData = {};
 // Store consultancies data
 let consultancies = [
     {% for consultancy in consultancies %}
-    { id: {{ consultancy.id }}, name: "{{ consultancy.name }}" },
+    { 
+        id: {{ consultancy.id }}, 
+        name: "{{ consultancy.name }}",
+        code: "{{ consultancy.hostel_code }}"
+    },
     {% endfor %}
 ];
 
@@ -161,17 +176,18 @@ function enableEdit(button) {
         originalData[studentId][field] = value;
         
         // Replace cell content with input field
-        if (field === 'consultancy') {
-            // Create dropdown for consultancy
+        if (field === 'consultancy_id') {
             let select = '<select class="form-control" data-field="consultancy_id">';
             consultancies.forEach(c => {
                 const selected = c.id == row.dataset.consultancyId ? 'selected' : '';
-                select += `<option value="${c.id}" ${selected}>${c.name}</option>`;
+                select += `<option value="${c.id}" ${selected}>${c.code} — ${c.name}</option>`;
             });
             select += '</select>';
             cell.innerHTML = select;
             cell.classList.add('edit-mode');
-        } else if (field === 'total_fees') {
+        }
+ 
+          else if (field === 'total_fees') {
             cell.innerHTML = `<input type="number" step="0.01" value="${value}" data-field="${field}">`;
             cell.classList.add('edit-mode');
         } else {
@@ -236,22 +252,38 @@ function saveChanges(button) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            // Update view mode with new values
+            // Update Hostel Code cell
+            row.querySelector('[data-field="consultancy_id"]').textContent =
+                result.student.hostel_code;
+
+            // Update Hostel Name cell (next column)
+            row.cells[6].textContent = result.student.hostel_name;
+
+            // Update dataset for future edits
+            row.dataset.consultancyId = result.student.consultancy_id;
+
+            // Update view mode with new values (FIXED)
             cells.forEach(cell => {
                 const field = cell.dataset.field;
-                if (field === 'consultancy') {
-                    cell.textContent = result.student.consultancy_name;
-                    row.dataset.consultancyId = result.student.consultancy_id;
-                } else if (field in result.student) {
+
+                if (field === 'consultancy_id') {
+                    // Hostel Code column → SHOW CODE, NOT ID
+                    cell.textContent = result.student.hostel_code;
+                }
+                else if (field in result.student) {
                     cell.textContent = result.student[field];
                 }
+
                 cell.classList.remove('edit-mode');
             });
-            
+
             // Update pending fees
-            const pendingCell = row.cells[8];
-            pendingCell.textContent = '₹' + result.student.fees_pending.toFixed(2);
-            
+            row.cells[9].textContent =
+                '₹' + result.student.fees_pending.toFixed(2);
+
+            // 🔥 THIS FIXES SECOND-TIME EDIT
+            button.textContent = 'Save';
+            button.disabled = false;
             // Show edit button, hide save/cancel buttons
             row.querySelector('.edit-btn').style.display = 'inline-block';
             row.querySelector('.save-btn').style.display = 'none';

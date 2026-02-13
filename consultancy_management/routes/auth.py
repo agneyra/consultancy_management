@@ -46,10 +46,19 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email')
 
-        user = User.query.filter(
-            User.email == email,
-            User.role.in_(["agent", "student"])
-        ).first()
+        # ✅ Allow BOTH students and agents
+        user = User.query.filter_by(email=email).first()
+
+        if not user:
+            flash('No account found with this email', 'error')
+            return redirect(url_for('auth.forgot_password'))
+
+        # OPTIONAL (but recommended): block inactive hostels for agents
+        if user.role == 'agent':
+            consultancy = user.consultancy
+            if consultancy and not consultancy.is_active:
+                flash('Your hostel is deactivated. Contact admin.', 'error')
+                return redirect(url_for('auth.forgot_password'))
 
         if not user:
             flash('Consultant email not found', 'error')

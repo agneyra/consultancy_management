@@ -27,9 +27,9 @@
             <ul class="nav-links">
                 {% if current_user.is_authenticated %}
                     <li class="animate-fadeIn"><a href="#">Welcome, {{ current_user.username }}!</a></li>
-                    <li class="animate-fadeIn"><a href="{{ url_for('auth.logout') }}" class="btn-login">Logout</a></li>
+                    <li class="animate-fadeIn" style = "color: white;"><a href="{{ url_for('auth.logout') }}" class="btn-login">Logout</a></li>
                 {% else %}
-                    <li class="animate-fadeIn"><a href="{{ url_for('auth.login') }}" class="btn-login">Login</a></li>
+                    <li class="animate-fadeIn" style = "color: white;"><a href="{{ url_for('auth.login') }}" class="btn-login">Login</a></li>
                 {% endif %}
             </ul>
         </div>

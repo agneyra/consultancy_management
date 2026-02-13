@@ -52,8 +52,11 @@
                     <label class="form-label">Select Hostel</label>
                     <select name="consultancy_id" class="form-control" required>
                         <option value="">-- Select Hostel --</option>
+
                         {% for consultancy in consultancies %}
-                        <option value="{{ consultancy.id }}">{{ consultancy.name }}</option>
+                            <option value="{{ consultancy.id }}">
+                                {{ consultancy.hostel_code }} — {{ consultancy.name }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -74,7 +77,7 @@
         <!-- Upload Excel File Card -->
         <div class="card">
             <h3 class="card-header">Upload Excel File</h3>
-            <p style="margin-bottom: 1rem;">Upload an Excel file containing student data. The file must have these columns: PRN, Name, Branch, Email, Phone, Hostel, Total_Fees, Fees_Paid, Pending_Fee</p>
+            <p style="margin-bottom: 1rem;">Upload an Excel file containing student data. The file must have these columns: PRN, Name, Branch, Email, Phone, Hostel_Code, Total_Fees, Fees_Paid, Pending_Fee</p>
             
             <button onclick="downloadSampleTemplate()" class="btn btn-secondary" style="margin-bottom: 1rem;">
                 Download Sample Template
@@ -97,7 +100,7 @@
             <ol style="margin-left: 1.5rem;">
                 <li>Download the sample template to see the required format</li>
                 <li>Fill in your student data following the same format</li>
-                <li><strong>Required columns:</strong> PRN, Name, Branch, Email, Phone, Hostel, Total_Fees, Fees_Paid, Pending_Fee</li>
+                <li><strong>Required columns:</strong> PRN, Name, Branch, Email, Phone, Hostel_Code , Total_Fees, Fees_Paid, Pending_Fee</li>
                 <li><strong>Important:</strong> Phone number is REQUIRED - it will be used as the student's password</li>
                 <li>Make sure the Hostel name matches exactly with names in the system</li>
                 <li>Upload the completed Excel file</li>
@@ -117,7 +120,7 @@
 // Update the downloadSampleTemplate function to include new columns
 function downloadSampleTemplate() {
     const sampleData = [
-        ['PRN', 'Name', 'Branch', 'Email', 'Phone', 'Hostel', 'Total_Fees', 'Fees_Paid', 'Pending_Fee'],
+        ['PRN', 'Name', 'Branch', 'Email', 'Phone', 'Hostel_Code', 'Total_Fees', 'Fees_Paid', 'Pending_Fee'],
         ['2023001', 'John Doe', 'Computer Science', 'john@example.com', '9876543210', 'ABC Hostel', '50000', '10000', '40000'],
         ['2023002', 'Jane Smith', 'Electronics', 'jane@example.com', '9876543211', 'ABC Hostel', '45000', '0', '45000']
     ];

@@ -6,6 +6,7 @@ from models.student import Student
 from models.consultancy import Consultancy
 import random
 import string
+from utils.hostels import HOSTELS
 
 def generate_password(length=8):
     """Generate a random password"""
@@ -17,7 +18,7 @@ def generate_password(length=8):
 def import_students_from_excel(file_path):
     """
     Import students from Excel file
-    Expected columns: PRN, Name, Branch, Email, Phone, Hostel, Total_Fees, Fees_Paid, Pending_Fee
+    Expected columns: PRN, Name, Branch, Email, Phone, Hostel_Code, Total_Fees, Fees_Paid, Pending_Fee
     """
     try:
         df = pd.read_excel(file_path)
@@ -25,7 +26,7 @@ def import_students_from_excel(file_path):
         # Strip whitespace from column names
         df.columns = df.columns.str.strip()
         
-        required_columns = ['PRN', 'Name', 'Branch', 'Email', 'Phone', 'Hostel', 'Total_Fees']
+        required_columns = ['PRN', 'Name', 'Branch', 'Email', 'Phone', 'Hostel_Code', 'Total_Fees']
         
         # Check if all required columns exist
         for col in required_columns:
@@ -42,11 +43,34 @@ def import_students_from_excel(file_path):
         for index, row in df.iterrows():
             try:
                 # Get or create consultancy
-                consultancy = Consultancy.query.filter_by(name=row['Hostel'].strip()).first()
-                if not consultancy:
+                # 🔥 Hostel code from Excel
+                hostel_code = str(row['Hostel_Code']).strip().upper()
+
+                # 1️⃣ Validate hostel code against predefined list
+                if hostel_code not in HOSTELS:
                     results['failed'] += 1
-                    results['errors'].append(f"Row {index+2}: Hostel '{row['Hostel']}' not found")
+                    results['errors'].append(
+                        f"Row {index+2}: Invalid hostel code '{hostel_code}'"
+                    )
                     continue
+
+                # 2️⃣ Find existing consultancy by hostel_code
+                consultancy = Consultancy.query.filter_by(hostel_code=hostel_code).first()
+
+                # 3️⃣ Auto-create consultancy if missing
+                if not consultancy:
+                    consultancy = Consultancy(
+                        hostel_code=hostel_code,
+                        name=HOSTELS[hostel_code],  # AUTO name from mapping
+                        contact_person="Auto Imported",
+                        email=f"{hostel_code.lower()}@auto.local",
+                        phone="0000000000",
+                        address="Auto created from Excel import",
+                        is_active=True
+                    )
+                    db.session.add(consultancy)
+                    db.session.flush()  # REQUIRED to get consultancy.id
+
                 
                 # Check if student already exists
                 existing_student = Student.query.filter_by(prn=str(row['PRN']).strip()).first()
@@ -138,7 +162,7 @@ def export_students_to_excel(students):
             'Branch': student.branch,
             'Email': student.email,
             'Phone': student.phone,
-            'Hostel': student.consultancy.name,
+            'Hostel_Code': f"{student.consultancy.hostel_code} - {student.consultancy.hostel_name}",
             'Total Fees': student.total_fees,
             'Fees Paid': student.fees_paid,
             'Fees Pending': student.fees_pending

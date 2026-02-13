@@ -16,7 +16,7 @@ import pandas as pd
 import json
 from datetime import datetime
 from models.transaction import ChangeLog
-
+from utils.hostels import HOSTELS
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -65,12 +65,61 @@ def dashboard():
     
     return render_template('admin/dashboard.html', stats=stats, announcements=announcements)
 
+
+@admin_bp.route('/students/sample-template')
+@login_required
+@admin_required
+def download_sample_template():
+    df = pd.DataFrame(columns=[
+        'PRN',
+        'Name',
+        'Branch',
+        'Email',
+        'Phone',
+        'Hostel_Code',   # ✅ FIXED
+        'Total_Fees',
+        'Fees_Paid',
+        'Pending_Fee'
+    ])
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sample')
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name='students_sample_template.xlsx',
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 @admin_bp.route('/consultancies')
 @login_required
 @admin_required
 def manage_consultancies():
     consultancies = Consultancy.query.all()
-    return render_template('admin/manage_consultancies.html', consultancies=consultancies)
+
+    # ✅ ONLY active hostels are considered "used"
+    used_codes = {
+        c.hostel_code
+        for c in consultancies
+        if c.is_active
+    }
+
+    available_hostels = {
+        code: name
+        for code, name in HOSTELS.items()
+        if code not in used_codes
+    }
+
+    return render_template(
+        'admin/manage_consultancies.html',
+        consultancies=consultancies,
+        available_hostels=available_hostels
+    )
+
 
 @admin_bp.route('/consultancies/add', methods=['POST'])
 @login_required
@@ -90,8 +139,40 @@ def add_consultancy():
     
     try:
         # Create consultancy
+        hostel_code = request.form.get('hostel_code')
+        if hostel_code not in HOSTELS:
+            flash('Invalid hostel selected!', 'error')
+            return redirect(url_for('admin.manage_consultancies'))
+        hostel_name = HOSTELS[hostel_code]
+
+        # Safety check
+        if not hostel_code:
+            flash('Hostel code is required!', 'error')
+            return redirect(url_for('admin.manage_consultancies'))
+
+        # Ensure hostel code is unique
+        existing = Consultancy.query.filter_by(hostel_code=hostel_code).first()
+
+        if existing:
+            if not existing.is_active:
+                existing.is_active = True
+                existing.contact_person = contact_person
+                existing.email = email
+                existing.phone = phone
+                existing.address = address
+                existing.payment_gateway_id = payment_gateway_id
+                existing.payment_gateway_key = payment_gateway_key
+
+                db.session.commit()
+                flash('Hostel reactivated successfully!', 'success')
+                return redirect(url_for('admin.manage_consultancies'))
+            else:
+                flash('Hostel code already exists!', 'error')
+                return redirect(url_for('admin.manage_consultancies'))
+
         consultancy = Consultancy(
-            name=name,
+            name=hostel_name,  
+            hostel_code=hostel_code,
             contact_person=contact_person,
             email=email,
             phone=phone,
@@ -163,7 +244,10 @@ def delete_consultancy(id):
 @admin_required
 def add_student_page():
     consultancies = Consultancy.query.filter_by(is_active=True).all()
-    return render_template('admin/add_student.html', consultancies=consultancies)
+    return render_template(
+        'admin/add_student.html',
+        consultancies=consultancies
+    )
 
 @admin_bp.route('/students/upload', methods=['POST'])
 @login_required
@@ -202,66 +286,71 @@ def upload_students():
 @login_required
 @admin_required
 def filtered_data():
-    consultancy_id = request.args.get('consultancy_id', type=int)
+    hostel_code = request.args.get('hostel_code', '')
     pending_filter = request.args.get('pending_filter', '')
     search = request.args.get('search', '')
     
-    consultancies = Consultancy.query.filter_by(is_active=True).all()
-    
-    # Base query
-    query = Student.query
-    
-    # Apply hostel filter
-    if consultancy_id:
-        query = query.filter_by(consultancy_id=consultancy_id)
-    
-    # Apply pending fee filter
+    consultancies = Consultancy.query.all()
+
+    query = Student.query.join(Consultancy)
+
+    # 🔥 Filter by hostel code
+    if hostel_code:
+        query = query.filter(Consultancy.hostel_code == hostel_code)
+
+    # Pending fee filter
     if pending_filter == 'has_pending':
         query = query.filter(Student.total_fees > Student.fees_paid)
     elif pending_filter == 'no_pending':
         query = query.filter(Student.total_fees <= Student.fees_paid)
-    
-    # Apply search filter
+
+    # Search filter
     if search:
         search_term = f"%{search}%"
         query = query.filter(
             db.or_(
-                Student.prn.like(search_term),
-                Student.full_name.like(search_term),
-                Student.email.like(search_term),
-                Student.branch.like(search_term)
+                Student.prn.ilike(search_term),
+                Student.full_name.ilike(search_term),
+                Student.email.ilike(search_term),
+                Student.branch.ilike(search_term)
             )
         )
-    
+
     students = query.all()
-    
-    return render_template('admin/filtered_data.html', 
-                         students=students, 
-                         consultancies=consultancies,
-                         selected_consultancy=consultancy_id)
+
+    return render_template(
+        'admin/filtered_data.html',
+        students=students,
+        consultancies=consultancies,
+        selected_hostel_code=hostel_code
+    )
 
 @admin_bp.route('/students/export')
 @login_required
 @admin_required
 def export_students():
-    consultancy_id = request.args.get('consultancy_id', type=int)
-    
-    if consultancy_id:
-        students = Student.query.filter_by(consultancy_id=consultancy_id).all()
-    else:
-        students = Student.query.all()
-    
+    hostel_code = request.args.get('hostel_code', '')
+
+    query = Student.query.join(Consultancy)
+
+    if hostel_code:
+        query = query.filter(Consultancy.hostel_code == hostel_code)
+
+    students = query.all()
+
     df = export_students_to_excel(students)
-    
+
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Students')
     output.seek(0)
-    
-    return send_file(output, 
-                    download_name='students_data.xlsx',
-                    as_attachment=True,
-                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    return send_file(
+        output,
+        download_name='students_data.xlsx',
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 @admin_bp.route('/announcements')
 @login_required
@@ -401,6 +490,8 @@ def update_student(id):
                 'phone': student.phone,
                 'consultancy_id': student.consultancy_id,
                 'consultancy_name': student.consultancy.name,
+                'hostel_code': student.consultancy.hostel_code,
+                'hostel_name': student.consultancy.name,
                 'total_fees': student.total_fees,
                 'fees_paid': student.fees_paid,
                 'fees_pending': student.fees_pending
@@ -463,12 +554,17 @@ def add_single_student():
         if existing_student:
             flash('Student with this PRN already exists!', 'error')
             return redirect(url_for('admin.add_student_page'))
-        
         # Check if consultancy exists
         consultancy = Consultancy.query.get(consultancy_id)
+
         if not consultancy:
             flash('Selected hostel not found!', 'error')
             return redirect(url_for('admin.add_student_page'))
+
+        if not consultancy.is_active:
+            flash('Selected hostel is deactivated. Activate it before adding students.', 'error')
+            return redirect(url_for('admin.add_student_page'))
+
         
         # Create user (username = PRN, password = phone number)
         user = User(
@@ -505,6 +601,20 @@ def add_single_student():
         return redirect(url_for('admin.add_student_page'))
 
 # Add these routes to routes/admin.py
+
+
+@admin_bp.route('/consultancies/<int:id>')
+@login_required
+@admin_required
+def get_consultancy(id):
+    c = Consultancy.query.get_or_404(id)
+    return jsonify({
+        'id': c.id,
+        'name': c.name,
+        'contact_person': c.contact_person,
+        'email': c.email,
+        'phone': c.phone
+    })
 
 # Replace the update_consultancy route in routes/admin.py with this complete version
 
@@ -550,7 +660,31 @@ def update_consultancy(id):
                 # Update agent password only if provided
                 if 'agent_password' in data and data['agent_password']:
                     agent.password = generate_password_hash(data['agent_password'])
-        
+        agent_id = data.get('agent_id')
+        agent_username = data.get('agent_username')
+        agent_password = data.get('agent_password')
+
+        if agent_id:
+            # ✅ UPDATE EXISTING AGENT
+            agent = User.query.get(agent_id)
+            if agent:
+                agent.username = agent_username
+                agent.email = consultancy.email
+                if agent_password:
+                    agent.password = generate_password_hash(agent_password)
+
+        else:
+            # ✅ CREATE AGENT IF MISSING (THIS IS WHY B6 WAS FAILING)
+            if agent_username:
+                new_agent = User(
+                    username=agent_username,
+                    password=generate_password_hash(agent_password or "123456"),
+                    email=consultancy.email,
+                    role='agent',
+                    consultancy_id=consultancy.id
+                )
+                db.session.add(new_agent)
+
         db.session.commit()
         
         return jsonify({

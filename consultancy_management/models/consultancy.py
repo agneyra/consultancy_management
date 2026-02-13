@@ -1,11 +1,19 @@
 from models.database import db
 from datetime import datetime
+from utils.hostels import HOSTELS
 
 class Consultancy(db.Model):
     __tablename__ = 'consultancies'
-    
+    @property
+    def hostel_name(self):
+        return HOSTELS.get(self.hostel_code, "Unknown Hostel")
+
     id = db.Column(db.Integer, primary_key=True)
+
+    # 🔑 Hostel Identity
     name = db.Column(db.String(200), unique=True, nullable=False)
+    hostel_code = db.Column(db.String(20), unique=True, nullable=False, index=True)
+
     contact_person = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20), nullable=False)
@@ -27,4 +35,4 @@ class Consultancy(db.Model):
     students = db.relationship('Student', backref='consultancy', lazy=True)
     
     def __repr__(self):
-        return f'<Consultancy {self.name}>'
+        return f'<Consultancy {self.hostel_code} - {self.name}>'
