@@ -11,6 +11,16 @@ from utils.email import mail
 app = Flask(__name__)
 app.config.from_object(Config)
 
+IS_VERCEL = "VERCEL" in os.environ
+
+if IS_VERCEL:
+    # Use Vercel's temporary writable directory
+    app.config['UPLOAD_FOLDER'] = '/tmp'
+else:
+    # Local development: ensure the static folder exists
+    upload_path = app.config.get('UPLOAD_FOLDER', 'static/uploads')
+    os.makedirs(upload_path, exist_ok=True)
+
 # Initialize database
 db.init_app(app)
 mail.init_app(app)
@@ -23,20 +33,7 @@ login_manager.login_view = 'auth.login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
-
-# Check if we are running on Vercel
-IS_VERCEL = "VERCEL" in os.environ
-
-UPLOAD_FOLDER = 'static/uploads'
-
-# Only create the directory if we are NOT on Vercel
-if not IS_VERCEL:
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-else:
-    # On Vercel, use the only writable directory available
-    UPLOAD_FOLDER = '/tmp'
-
+    
 # Register blueprints
 from routes.auth import auth_bp
 from routes.admin import admin_bp
