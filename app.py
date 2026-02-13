@@ -37,10 +37,6 @@ else:
     # On Vercel, use the only writable directory available
     UPLOAD_FOLDER = '/tmp'
 
-
-# Create upload folder
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
 # Register blueprints
 from routes.auth import auth_bp
 from routes.admin import admin_bp
