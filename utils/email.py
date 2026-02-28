@@ -26,3 +26,4 @@ def send_reset_otp(email, otp):
     )
 
     Thread(target=send_async_email, args=(app, message)).start()
+    return True
