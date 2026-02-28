@@ -526,17 +526,27 @@ def admin_forgot_password():
 
 @auth_bp.route('/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
+    user_id = session.get('reset_user_id')
+
+    # 🔥 ADD THIS CHECK
+    if not user_id:
+        flash('Session expired. Please try again.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = User.query.get(user_id)
+
+    if not user:
+        flash('Invalid session. Please try again.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
     if request.method == 'POST':
         otp = request.form.get('otp')
-        user_id = session.get('reset_user_id')
 
-        user = User.query.get(user_id)
-
-        if not user or user.reset_otp != otp:
+        if not user.reset_otp or user.reset_otp != otp:
             flash('Invalid OTP', 'error')
             return redirect(url_for('auth.verify_otp'))
 
-        if user.reset_otp_expiry < datetime.utcnow():
+        if not user.reset_otp_expiry or user.reset_otp_expiry < datetime.utcnow():
             flash('OTP expired', 'error')
             return redirect(url_for('auth.forgot_password'))
 
