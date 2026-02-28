@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Student Portal</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('student.dashboard') }}" class="active">Dashboard</a></li>
+            <li><a href="{{ url_for('student.change_password') }}">Change Password</a></li>
+            <li><a href="{{ url_for('student.need_help') }}">Need Help...?</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="user-info">
+            <div class="user-avatar">{{ student.full_name[0] }}</div>
+            <div class="user-details">
+                <h3>{{ student.full_name }}</h3>
+                <p>PRN: {{ student.prn }} | Branch: {{ student.branch }}</p>
+                <p>Email: {{ student.email }}</p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Fees</div>
+                <div class="stat-value">{{ stats.total_fees | inr }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Paid</div>
+                <div class="stat-value">{{ stats.fees_paid | inr }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Pending</div>
+                <div class="stat-value">{{ stats.fees_pending | inr }}</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3 class="chart-title">Fee Distribution</h3>
+            <canvas id="feeChart" data-total="{{ stats.total_fees }}" data-paid="{{ stats.fees_paid }}"
+                data-pending="{{ stats.fees_pending }}"></canvas>
+        </div>
+
+    </main>
+</div>
+{% endblock %}

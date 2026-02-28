@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Recover Consultant Authenticator{% endblock %}
+
+{% block guest_nav_login %}{% endblock %}
+
+{% block content %}
+<div class="auth-gloss-wrap">
+    <div class="auth-gloss-shell" style="max-width: 520px;">
+        <div class="card auth-gloss-card animate-scaleIn">
+            <div style="margin-bottom: 0.5rem;">
+                <a href="{{ url_for('auth.agent_2fa') }}" aria-label="Back" class="auth-back-link">&#8592;</a>
+            </div>
+            <h2 class="card-header">
+                {% if otp_sent %}Verify OTP{% else %}Recover Authenticator{% endif %}
+            </h2>
+
+            {% if not otp_sent %}
+            <p class="auth-gloss-muted" style="margin-bottom: 0.5rem;">
+                Send OTP to your registered email to recover 2-step verification.
+            </p>
+            <p class="auth-gloss-muted" style="margin-bottom: 1.25rem;">
+                Registered email: {{ masked_email }}
+            </p>
+            <form method="POST" action="{{ url_for('auth.agent_2fa_recover') }}">
+                <input type="hidden" name="action" value="send_otp">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send OTP</button>
+            </form>
+            {% else %}
+            <p class="auth-gloss-muted" style="margin-bottom: 1.25rem;">
+                OTP sent to your registered email: {{ masked_email }}
+            </p>
+            <form method="POST" action="{{ url_for('auth.agent_2fa_recover') }}" style="margin-top: 1rem;">
+                <input type="hidden" name="action" value="verify_otp">
+                <div class="form-group">
+                    <label class="form-label">OTP Code</label>
+                    <input
+                        type="text"
+                        name="otp_code"
+                        class="form-control"
+                        inputmode="numeric"
+                        pattern="[0-9]{6}"
+                        maxlength="6"
+                        minlength="6"
+                        placeholder="Enter 6-digit OTP"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Verify OTP</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

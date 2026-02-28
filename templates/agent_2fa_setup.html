@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Consultant 2FA Setup{% endblock %}
+
+{% block guest_nav_login %}{% endblock %}
+
+{% block content %}
+<div class="auth-gloss-wrap">
+    <div class="auth-gloss-shell" style="max-width: 560px;">
+        <div class="card auth-gloss-card animate-scaleIn">
+            <div style="margin-bottom: 0.5rem;">
+                <a href="{{ url_for('auth.role_login', role_key='consultant') }}" aria-label="Back" class="auth-back-link">&#8592;</a>
+            </div>
+            <h2 class="card-header">Consultant Authenticator Setup</h2>
+            <p class="auth-gloss-muted" style="margin-bottom: 1.25rem;">
+                Scan this QR code in Google Authenticator, then enter the 6-digit code to finish setup.
+            </p>
+
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <img src="{{ qr_code_url }}" alt="Authenticator QR Code" style="width: 240px; height: 240px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Manual Setup Key</label>
+                <input type="text" class="form-control" value="{{ setup_key }}" readonly>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.agent_2fa_setup') }}">
+                <div class="form-group">
+                    <label class="form-label">6-digit Authenticator Code</label>
+                    <input
+                        type="text"
+                        name="otp_code"
+                        class="form-control"
+                        inputmode="numeric"
+                        pattern="[0-9]{6}"
+                        maxlength="6"
+                        minlength="6"
+                        placeholder="Enter 6-digit code"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Verify Setup and Login</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar animate-slideInLeft">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}" class="active">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin.change_password') }}">Admin Details...!</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="page-header animate-fadeIn">
+            <h1 class="page-title">Dashboard</h1>
+        </div>
+
+        <div class="filter-section animate-fadeIn" style="margin-bottom: 1rem;">
+            <form method="GET" action="{{ url_for('admin.dashboard') }}" class="filter-row" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="filter-group" style="min-width: 240px; flex: 1 1 260px;">
+                    <label class="form-label">Filter by Hostel</label>
+                    <select name="hostel_id" class="form-control">
+                        <option value="">All Hostels</option>
+                        {% for consultancy in consultancies %}
+                        <option value="{{ consultancy.id }}" {% if selected_hostel_id == consultancy.id %}selected{% endif %}>
+                            {{ consultancy.hostel_code }} - {{ consultancy.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group" style="min-width: 240px; flex: 1 1 260px;">
+                    <label class="form-label">Filter by Semester</label>
+                    <select name="semester" class="form-control">
+                        <option value="">All Semesters</option>
+                        {% for sem in range(1, 9) %}
+                        <option value="{{ sem }}" {% if selected_semester == sem %}selected{% endif %}>Semester {{ sem }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn filter-action-btn filter-apply-btn">Apply Filters</button>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn filter-action-btn filter-reset-btn">Reset</a>
+            </form>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Fees</div>
+                <div class="stat-value">{{ stats.total_fees | inr }}</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Fees Paid</div>
+                <div class="stat-value">{{ stats.fees_paid | inr }}</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Fees Pending</div>
+                <div class="stat-value">{{ stats.fees_pending | inr }}</div>
+            </div>
+        </div>
+
+        
+        <div class="chart-container animate-fadeIn">
+            <h3 class="chart-title">
+                Fee Distribution
+                {% if selected_semester %}(Semester {{ selected_semester }}){% endif %}
+            </h3>
+            <canvas id="feeChart" 
+                    data-total="{{ stats.total_fees }}" 
+                    data-paid="{{ stats.fees_paid }}" 
+                    data-pending="{{ stats.fees_pending }}"></canvas>
+        </div>
+        
+        <div class="card animate-fadeIn">
+            <h3 class="card-header">Quick Stats</h3>
+            <p>Total Hostels: {{ stats.total_consultancies }}</p>
+            <p>Total Students: {{ stats.total_students }}</p>
+        </div>
+    </main>
+</div>
+{% endblock %}

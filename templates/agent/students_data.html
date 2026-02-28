@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+
+{% block title %}View Students{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar animate-slideInLeft">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Agent Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('agent.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('agent.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('agent.students_data') }}" class="active">View Students</a></li>
+            <li><a href="{{ url_for('agent.change_password') }}">Change Password</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header animate-fadeIn">
+            <h1 class="page-title">Students Data</h1>
+        </div>
+
+        <div class="filter-section animate-fadeIn">
+            <form method="GET" action="{{ url_for('agent.students_data') }}" id="filterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="form-label">Filter by Hostel</label>
+                        <select name="hostel_id" class="form-control">
+                            <option value="">All Hostels</option>
+                            {% for consultancy in consultancies %}
+                            <option value="{{ consultancy.id }}" {% if selected_hostel_id == consultancy.id %}selected{% endif %}>
+                                {{ consultancy.hostel_code }} - {{ consultancy.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="form-label">Filter by Pending Fee</label>
+                        <select name="pending_filter" class="form-control">
+                            <option value="">All Students</option>
+                            <option value="has_pending" {% if request.args.get('pending_filter') == 'has_pending' %}selected{% endif %}>
+                                Has Pending Fees
+                            </option>
+                            <option value="no_pending" {% if request.args.get('pending_filter') == 'no_pending' %}selected{% endif %}>
+                                No Pending Fees
+                            </option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="form-label">Search Student</label>
+                        <input
+                            type="text"
+                            name="search"
+                            class="form-control"
+                            placeholder="Search by PRN, Name, Email..."
+                            value="{{ request.args.get('search', '') }}"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="action-buttons animate-fadeIn">
+            <a href="{{ url_for('agent.export_students', hostel_id=selected_hostel_id if selected_hostel_id else '') }}" class="btn btn-success">
+                Export to Excel
+            </a>
+        </div>
+
+        <div class="card animate-fadeIn">
+            <h3 class="card-header">Bulk Semester Fee Upload</h3>
+            <p style="margin-bottom: 1rem;">
+                Upload Excel file to add/update semester fees using:
+                <strong>PRN, Semester, Total_Fees, Fees_Paid</strong>.
+                If PRN + Semester already exists, it will be updated.
+            </p>
+            <button type="button" onclick="downloadSemesterFeeTemplate()" class="btn btn-secondary" style="margin-bottom: 1rem;">
+                Download Semester Fee Sample Template
+            </button>
+            <form id="semesterFeeUploadForm" data-upload-url="{{ url_for('agent.upload_semester_fees') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="form-label">Select Excel File (.xlsx, .xls, .csv)</label>
+                    <input type="file" id="semesterFeeExcelFile" accept=".xlsx,.xls,.csv" class="form-control" required>
+                    <small id="semesterFeeFileName" style="color: var(--text-secondary);">No file selected</small>
+                </div>
+                <button type="submit" id="semesterFeeUploadBtn" class="btn btn-primary">Upload Semester Fees</button>
+            </form>
+            <div id="semesterFeeUploadResults" style="margin-top: 1rem;"></div>
+        </div>
+
+        <div class="card animate-fadeIn">
+            <h3 class="card-header">Your Students ({{ students|length }})</h3>
+            <div style="background-color: #d1f4ff; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
+                <p style="color: #0c4a6e; margin: 0;">
+                    <strong>Tip:</strong> Click any student row to view semester-wise fee details and manage each semester entry.
+                </p>
+            </div>
+            <div class="table-wrapper">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>PRN</th>
+                            <th>Name</th>
+                            <th>Branch</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Hostel Code</th>
+                            <th>Hostel Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr
+                            id="student-row-{{ student.id }}"
+                            data-student-id="{{ student.id }}"
+                            data-consultancy-id="{{ student.consultancy_id }}"
+                            class="student-summary-row"
+                            onclick="toggleSemesterDetails({{ student.id }})"
+                            onkeydown="handleStudentRowKey(event, {{ student.id }})"
+                            tabindex="0"
+                            role="button"
+                            aria-expanded="false"
+                        >
+                            <td>{{ student.prn }}</td>
+                            <td>{{ student.full_name }}</td>
+                            <td>{{ student.branch }}</td>
+                            <td>{{ student.email }}</td>
+                            <td>{{ student.phone }}</td>
+                            <td>{{ student.consultancy.hostel_code }}</td>
+                            <td>{{ student.consultancy.name }}</td>
+                        </tr>
+                        <tr id="semester-details-{{ student.id }}" class="semester-details-row" style="display: none;">
+                            <td colspan="7">
+                                <div class="semester-details-card">
+                                    <div class="semester-details-header">
+                                        <h4>Semester-wise Fees</h4>
+                                        <button type="button" class="btn btn-primary" onclick="openSemesterFeeModal({{ student.id }})" style="padding: 6px 12px;">
+                                            Add Semester Fee
+                                        </button>
+                                    </div>
+                                    <div class="semester-inner-wrapper">
+                                        <table class="semester-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Semester</th>
+                                                    <th>Total Fees</th>
+                                                    <th>Paid</th>
+                                                    <th>Pending</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="semester-fees-body-{{ student.id }}"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="semesterFeeModal" class="modal">
+    <div class="modal-content" style="max-width: 520px;">
+        <div class="modal-header">
+            <h2 id="semesterFeeModalTitle">Add Semester Fee</h2>
+            <span class="close" onclick="closeModal('semesterFeeModal')">&times;</span>
+        </div>
+
+        <form id="semesterFeeForm">
+            <input type="hidden" id="semester_fee_student_id">
+            <input type="hidden" id="semester_fee_id">
+
+            <div class="form-group">
+                <label class="form-label">Semester</label>
+                <select id="semester_fee_semester" class="form-control" required>
+                    <option value="">-- Select Semester --</option>
+                    {% for sem in range(1, 9) %}
+                    <option value="{{ sem }}">Semester {{ sem }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Total Fees</label>
+                <input type="number" step="0.01" min="0" id="semester_fee_total_fees" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Paid Fees</label>
+                <input type="number" step="0.01" min="0" id="semester_fee_fees_paid" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="semesterFeeSubmitBtn">Save</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('semesterFeeModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .table-wrapper {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #studentsTable {
+        min-width: 980px;
+    }
+
+    @media (max-width: 768px) {
+        #studentsTable {
+            min-width: 980px;
+        }
+
+        #studentsTable th:last-child,
+        #studentsTable td:last-child {
+            position: static !important;
+            right: auto !important;
+            min-width: auto !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+            z-index: auto !important;
+        }
+
+        #studentsTable th:last-child {
+            background-color: var(--background) !important;
+        }
+
+        #studentsTable td:last-child {
+            background-color: var(--surface) !important;
+        }
+    }
+
+    .student-summary-row {
+        cursor: pointer;
+    }
+
+    .student-summary-row:hover {
+        background: var(--background);
+    }
+
+    .student-summary-row:active {
+        background: var(--background);
+    }
+
+    .student-summary-row:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+    }
+
+    .semester-details-card {
+        background: var(--surface);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+        overflow: hidden;
+    }
+
+    .semester-details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        gap: 0.75rem;
+    }
+
+    .semester-details-header h4 {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .semester-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .semester-inner-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-height: none;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .semester-inner-wrapper::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+    }
+
+    .semester-table th,
+    .semester-table td {
+        border: 1px solid var(--border-color);
+        padding: 0.55rem 0.6rem;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .semester-action-btn {
+        padding: 5px 10px;
+        margin-right: 6px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        color: #fff;
+    }
+
+    .semester-action-edit {
+        background: #4b5563;
+    }
+
+    .semester-action-delete {
+        background: #dc2626;
+        margin-right: 0;
+    }
+</style>
+
+<script>
+    const semesterFeesByStudent = {};
+
+    {% for student in students %}
+    semesterFeesByStudent[{{ student.id }}] = [
+        {% for fee in student.semester_fees|sort(attribute='semester') %}
+        {
+            id: {{ fee.id }},
+            student_id: {{ student.id }},
+            semester: {{ fee.semester }},
+            total_fees: {{ fee.total_fees }},
+            fees_paid: {{ fee.fees_paid }},
+            fees_pending: {{ fee.fees_pending }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    {% endfor %}
+
+    function downloadSemesterFeeTemplate() {
+        window.location.href = "{{ url_for('agent.download_semester_fee_template') }}";
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function initializeSemesterFeeUpload() {
+        const uploadForm = document.getElementById('semesterFeeUploadForm');
+        const fileInput = document.getElementById('semesterFeeExcelFile');
+        const uploadBtn = document.getElementById('semesterFeeUploadBtn');
+        const resultDiv = document.getElementById('semesterFeeUploadResults');
+        const fileNameEl = document.getElementById('semesterFeeFileName');
+
+        if (!uploadForm || !fileInput || !uploadBtn || !resultDiv || !fileNameEl) {
+            return;
+        }
+
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) {
+                fileNameEl.textContent = 'No file selected';
+                return;
+            }
+            const fileSizeKb = (file.size / 1024).toFixed(2);
+            fileNameEl.textContent = `${file.name} (${fileSizeKb} KB)`;
+        });
+
+        uploadForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            resultDiv.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch(uploadForm.dataset.uploadUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    resultDiv.innerHTML = `<div class="alert alert-error"><strong>Error:</strong> ${escapeHtml(result.message || 'Upload failed')}</div>`;
+                    return;
+                }
+
+                const details = result.details || {};
+                let html = `
+                    <div class="alert alert-success">
+                        <strong>${escapeHtml(result.message || 'Upload completed')}</strong><br>
+                        <small>Processed: ${details.processed || 0}</small><br>
+                        <small>Added: ${details.added || 0}</small><br>
+                        <small>Updated: ${details.updated || 0}</small>
+                        ${(details.failed || 0) > 0 ? `<br><small>Failed: ${details.failed}</small>` : ''}
+                    </div>
+                `;
+
+                if (Array.isArray(details.errors) && details.errors.length) {
+                    html += '<div class="alert alert-error"><strong>Row Errors:</strong><ul>';
+                    details.errors.forEach(error => {
+                        html += `<li>${escapeHtml(error)}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+
+                if ((details.failed || 0) > 0) {
+                    html += '<button type="button" class="btn btn-primary" onclick="window.location.reload()">Reload Page</button>';
+                } else {
+                    html += '<small style="display:block; margin-top: 0.5rem;">Reloading to show updated semester totals...</small>';
+                    setTimeout(() => window.location.reload(), 1200);
+                }
+
+                resultDiv.innerHTML = html;
+                uploadForm.reset();
+                fileNameEl.textContent = 'No file selected';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="alert alert-error"><strong>Error:</strong> ${escapeHtml(error.message || 'Upload failed')}</div>`;
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Semester Fees';
+            }
+        });
+    }
+
+    function formatInr(amount) {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 2
+        }).format(parseFloat(amount || 0));
+    }
+
+    function getStudentSemesterFees(studentId) {
+        if (!semesterFeesByStudent[studentId]) {
+            semesterFeesByStudent[studentId] = [];
+        }
+        return semesterFeesByStudent[studentId];
+    }
+
+    function sortStudentSemesterFees(studentId) {
+        getStudentSemesterFees(studentId).sort((a, b) => a.semester - b.semester);
+    }
+
+    function renderSemesterFees(studentId) {
+        const tbody = document.getElementById(`semester-fees-body-${studentId}`);
+        if (!tbody) {
+            return;
+        }
+
+        sortStudentSemesterFees(studentId);
+        const rows = getStudentSemesterFees(studentId);
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No semester fee details available.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(fee => `
+            <tr data-semester-fee-id="${fee.id}">
+                <td>Semester ${fee.semester}</td>
+                <td>${formatInr(fee.total_fees)}</td>
+                <td>${formatInr(fee.fees_paid)}</td>
+                <td>${formatInr((fee.total_fees || 0) - (fee.fees_paid || 0))}</td>
+                <td>
+                    <button type="button" class="semester-action-btn semester-action-edit" onclick="openSemesterFeeModal(${studentId}, ${fee.id})">Edit</button>
+                    <button type="button" class="semester-action-btn semester-action-delete" onclick="deleteSemesterFee(${studentId}, ${fee.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function toggleSemesterDetails(studentId) {
+        const detailRow = document.getElementById(`semester-details-${studentId}`);
+        const summaryRow = document.getElementById(`student-row-${studentId}`);
+        if (!detailRow) {
+            return;
+        }
+
+        const isOpen = detailRow.style.display !== 'none';
+        detailRow.style.display = isOpen ? 'none' : 'table-row';
+        if (summaryRow) {
+            summaryRow.setAttribute('aria-expanded', String(!isOpen));
+        }
+
+        if (!isOpen) {
+            renderSemesterFees(studentId);
+        }
+    }
+
+    function handleStudentRowKey(event, studentId) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleSemesterDetails(studentId);
+        }
+    }
+
+    function openSemesterFeeModal(studentId, feeId = null) {
+        const titleEl = document.getElementById('semesterFeeModalTitle');
+        const studentIdEl = document.getElementById('semester_fee_student_id');
+        const feeIdEl = document.getElementById('semester_fee_id');
+        const semesterEl = document.getElementById('semester_fee_semester');
+        const totalFeesEl = document.getElementById('semester_fee_total_fees');
+        const feesPaidEl = document.getElementById('semester_fee_fees_paid');
+
+        studentIdEl.value = String(studentId);
+
+        if (feeId) {
+            const row = getStudentSemesterFees(studentId).find(item => item.id === feeId);
+            if (!row) {
+                alert('Semester fee row not found');
+                return;
+            }
+            titleEl.textContent = 'Edit Semester Fee';
+            feeIdEl.value = String(feeId);
+            semesterEl.value = String(row.semester);
+            totalFeesEl.value = row.total_fees;
+            feesPaidEl.value = row.fees_paid;
+        } else {
+            titleEl.textContent = 'Add Semester Fee';
+            feeIdEl.value = '';
+            semesterEl.value = '';
+            totalFeesEl.value = '';
+            feesPaidEl.value = '0';
+        }
+
+        openModal('semesterFeeModal');
+    }
+
+    document.getElementById('semesterFeeForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const studentId = Number(document.getElementById('semester_fee_student_id').value);
+        const feeIdRaw = document.getElementById('semester_fee_id').value;
+        const feeId = feeIdRaw ? Number(feeIdRaw) : null;
+
+        const payload = {
+            semester: document.getElementById('semester_fee_semester').value,
+            total_fees: document.getElementById('semester_fee_total_fees').value,
+            fees_paid: document.getElementById('semester_fee_fees_paid').value
+        };
+
+        const submitBtn = document.getElementById('semesterFeeSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+
+        const url = feeId
+            ? `/agent/students/semester-fees/update/${feeId}`
+            : `/agent/students/${studentId}/semester-fees/add`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                alert(result.message || 'Failed to save semester fee');
+                return;
+            }
+
+            const rows = getStudentSemesterFees(studentId);
+            if (feeId) {
+                const index = rows.findIndex(item => item.id === feeId);
+                if (index >= 0) {
+                    rows[index] = result.semester_fee;
+                }
+            } else {
+                rows.push(result.semester_fee);
+            }
+
+            renderSemesterFees(studentId);
+            closeModal('semesterFeeModal');
+            alert(result.message || 'Saved successfully');
+        } catch (error) {
+            console.error(error);
+            alert('Error while saving semester fee');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save';
+        }
+    });
+
+    async function deleteSemesterFee(studentId, feeId) {
+        const confirmed = await appConfirm('Delete this semester fee row?');
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/agent/students/semester-fees/delete/${feeId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                alert(result.message || 'Failed to delete semester fee');
+                return;
+            }
+
+            semesterFeesByStudent[studentId] = getStudentSemesterFees(studentId).filter(item => item.id !== feeId);
+            renderSemesterFees(studentId);
+            alert(result.message || 'Deleted successfully');
+        } catch (error) {
+            console.error(error);
+            alert('Error while deleting semester fee');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeSemesterFeeUpload();
+        Object.keys(semesterFeesByStudent).forEach(studentId => {
+            renderSemesterFees(Number(studentId));
+        });
+    });
+</script>
+{% endblock %}

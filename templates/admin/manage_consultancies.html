@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Hostels{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar animate-slideInLeft">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Admin Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('admin.manage_consultancies') }}" class="active">Manage Hostels</a></li>
+            <li><a href="{{ url_for('admin.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('admin.filtered_data') }}">View Data</a></li>
+            <li><a href="{{ url_for('admin.announcements') }}">Announcements</a></li>
+            <li><a href="{{ url_for('admin.change_password') }}">Admin Details...!</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header animate-fadeIn">
+            <h1 class="page-title">Manage Hostels</h1>
+        </div>
+
+        <button onclick="openAddConsultancyModal()" class="btn btn-primary animate-pulse">
+            Add New Hostel
+        </button>
+
+        <div class="card animate-fadeIn">
+            <h3 class="card-header">Hostels List</h3>
+
+            <div class="hostel-note">
+                <strong>Note:</strong>
+                Editing hostel details will not affect student data.
+                Deleting a hostel will permanently remove associated students, agents, and transactions.
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hostel Code</th>
+                            <th>Name</th>
+                            <th>Contact Person</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Agent Username</th>
+                            <th>Students</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consultancy in consultancies %}
+                        {% if consultancy.is_active %}
+                        <tr>
+                            <td><strong>{{ consultancy.hostel_code }}</strong></td>
+                            <td>{{ consultancy.name }}</td>
+                            <td>{{ consultancy.contact_person }}</td>
+                            <td>{{ consultancy.email }}</td>
+                            <td>{{ consultancy.phone }}</td>
+                            <td>
+                                {{ agent_usernames_by_hostel.get(consultancy.id, 'N/A') }}
+                            </td>
+                            <td>{{ consultancy.students | length }}</td>
+                            <td>
+                                <button onclick="openEditModal({{ consultancy.id }})"
+                                        class="btn btn-primary"
+                                        style="background:#4b4b4b;">
+                                    Edit
+                                </button>
+                                <button onclick='deleteConsultancy({{ consultancy.id }}, {{ consultancy.name | tojson }})'
+                                        class="btn btn-danger">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ADD HOSTEL MODAL -->
+<div id="addConsultancyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Hostel</h2>
+            <span class="close" onclick="closeModal('addConsultancyModal')">&times;</span>
+        </div>
+
+        <form method="POST" action="{{ url_for('admin.add_consultancy') }}">
+            <h3>Consultant Assignment</h3>
+
+            <div class="form-group">
+                <label>Use Existing Consultant (Optional)</label>
+                <select name="existing_agent_id" id="existing_agent_id" class="form-control" onchange="toggleNewAgentFields()">
+                    <option value="">-- Create New Consultant --</option>
+                    {% for agent in available_agents %}
+                    <option value="{{ agent.id }}">{{ agent.username }}{% if agent.email %} ({{ agent.email }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+                <small id="existing_agent_hint" style="display:block; margin-top:6px; color:#64748b;">
+                    Select an existing consultant to assign this new hostel, or keep "Create New Consultant" to enter details below.
+                </small>
+            </div>
+
+            <div id="new_consultant_fields">
+                <div class="form-group">
+                    <label>Agent Username</label>
+                    <input id="agent_username" name="agent_username" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Agent Password</label>
+                    <input id="agent_password" name="agent_password" type="password" class="form-control">
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="form-group">
+                <label>Hostel</label>
+                <select name="hostel_code" class="form-control" required>
+                    <option value="">-- Select Hostel --</option>
+                    {% for code, name in available_hostels.items() %}
+                        <option value="{{ code }}">{{ code }} — {{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Contact Person</label>
+                <input id="contact_person" name="contact_person" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input id="email" name="email" type="email" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>Phone</label>
+                <input id="phone" name="phone" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>Hostel Address</label>
+                <textarea id="address" name="address" class="form-control"></textarea>
+            </div>
+
+            <button class="btn btn-primary">Add Hostel</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('addConsultancyModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT HOSTEL MODAL -->
+<div id="editConsultancyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Hostel</h2>
+            <span class="close" onclick="closeModal('editConsultancyModal')">&times;</span>
+        </div>
+
+        <form id="editConsultancyForm">
+            <input type="hidden" id="edit_consultancy_id">
+            <input type="hidden" id="edit_agent_id">
+
+            <div class="form-group">
+                <label>Hostel Code</label>
+                <input id="edit_hostel_code" class="form-control" readonly>
+            </div>
+
+            <!-- ✅ FIXED: THIS WAS MISSING -->
+            <div class="form-group">
+                <label>Hostel Name</label>
+                <input id="edit_name" class="form-control" required>
+            </div>
+
+
+            <div class="form-group">
+                <label>Contact Person</label>
+                <input id="edit_contact_person" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input id="edit_email" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>Phone</label>
+                <input id="edit_phone" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>Hostel Address</label>
+                <textarea id="edit_address" class="form-control"></textarea>
+            </div>
+
+            <hr>
+            <h3>Agent</h3>
+
+            <div class="form-group">
+                <label>Agent Username</label>
+                <input id="edit_agent_username" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>New Agent Password</label>
+                <input id="edit_agent_password" type="password" class="form-control">
+            </div>
+
+            <button class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('editConsultancyModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+let consultanciesData = {};
+let agentDefaults = {{ agent_defaults | tojson }};
+
+{% for consultancy in consultancies %}
+consultanciesData[{{ consultancy.id }}] = {{ {
+    'id': consultancy.id,
+    'hostel_code': consultancy.hostel_code,
+    'name': consultancy.name,
+    'contact_person': consultancy.contact_person,
+    'email': consultancy.email,
+    'phone': consultancy.phone,
+    'address': consultancy.address or '',
+    'agent_id': (primary_agent_by_hostel[consultancy.id].id if primary_agent_by_hostel.get(consultancy.id) else none),
+    'agent_username': (primary_agent_by_hostel[consultancy.id].username if primary_agent_by_hostel.get(consultancy.id) else '')
+} | tojson }};
+
+{% endfor %}
+
+function toggleNewAgentFields() {
+    const existingAgentSelect = document.getElementById('existing_agent_id');
+    const usernameInput = document.getElementById('agent_username');
+    const passwordInput = document.getElementById('agent_password');
+    const newConsultantFields = document.getElementById('new_consultant_fields');
+    const contactPersonInput = document.getElementById('contact_person');
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phone');
+    const addressInput = document.getElementById('address');
+    const usingExisting = existingAgentSelect && existingAgentSelect.value !== '';
+
+    if (!usernameInput || !passwordInput || !newConsultantFields) return;
+
+    usernameInput.disabled = usingExisting;
+    passwordInput.disabled = usingExisting;
+    if (usingExisting) {
+        newConsultantFields.style.display = 'none';
+        usernameInput.value = '';
+        passwordInput.value = '';
+        usernameInput.removeAttribute('required');
+        passwordInput.removeAttribute('required');
+
+        const selectedAgentId = existingAgentSelect.value;
+        const defaults = agentDefaults[selectedAgentId] || {};
+        if (contactPersonInput) contactPersonInput.value = defaults.contact_person || '';
+        if (emailInput) emailInput.value = defaults.email || '';
+        if (phoneInput) phoneInput.value = defaults.phone || '';
+        if (addressInput) addressInput.value = defaults.address || '';
+
+        [contactPersonInput, emailInput, phoneInput, addressInput]
+            .forEach(input => {
+                if (input) input.readOnly = true;
+            });
+    } else {
+        newConsultantFields.style.display = 'block';
+        usernameInput.setAttribute('required', 'required');
+        passwordInput.setAttribute('required', 'required');
+
+        [contactPersonInput, emailInput, phoneInput, addressInput]
+            .forEach(input => {
+                if (input) input.readOnly = false;
+            });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', toggleNewAgentFields);
+
+function openAddConsultancyModal() {
+    const form = document.querySelector('#addConsultancyModal form');
+    if (form) {
+        form.reset();
+    }
+    toggleNewAgentFields();
+    if (typeof openModal === 'function') {
+        openModal('addConsultancyModal');
+    } else {
+        const modal = document.getElementById('addConsultancyModal');
+        if (modal) modal.style.display = 'block';
+    }
+}
+
+function openEditModal(id) {
+    const c = consultanciesData[id];
+    if (!c) {
+        window.appAlert('Unable to open hostel details. Please refresh and try again.');
+        return;
+    }
+
+    const editConsultancyId = document.getElementById('edit_consultancy_id');
+    const editAgentId = document.getElementById('edit_agent_id');
+    const editHostelCode = document.getElementById('edit_hostel_code');
+    const editName = document.getElementById('edit_name');
+    const editContactPerson = document.getElementById('edit_contact_person');
+    const editEmail = document.getElementById('edit_email');
+    const editPhone = document.getElementById('edit_phone');
+    const editAddress = document.getElementById('edit_address');
+    const editAgentUsername = document.getElementById('edit_agent_username');
+    const editAgentPassword = document.getElementById('edit_agent_password');
+
+    if (!editConsultancyId || !editAgentId || !editHostelCode || !editName || !editContactPerson || !editEmail || !editPhone || !editAddress || !editAgentUsername || !editAgentPassword) {
+        window.appAlert('Edit form is not available. Please refresh and try again.');
+        return;
+    }
+
+    editConsultancyId.value = c.id;
+    editAgentId.value = c.agent_id || '';
+    editHostelCode.value = c.hostel_code || '';
+    editName.value = c.name || '';
+    editContactPerson.value = c.contact_person || '';
+    editEmail.value = c.email || '';
+    editPhone.value = c.phone || '';
+    editAddress.value = c.address || '';
+    editAgentUsername.value = c.agent_username || '';
+    editAgentPassword.value = '';
+
+    if (typeof openModal === 'function') {
+        openModal('editConsultancyModal');
+    } else {
+        const modal = document.getElementById('editConsultancyModal');
+        if (modal) modal.style.display = 'block';
+    }
+}
+
+document.getElementById('editConsultancyForm').onsubmit = function(e) {
+    e.preventDefault();
+
+    const editConsultancyId = document.getElementById('edit_consultancy_id').value;
+    const editAgentId = document.getElementById('edit_agent_id').value;
+    const editName = document.getElementById('edit_name').value;
+    const editContactPerson = document.getElementById('edit_contact_person').value;
+    const editEmail = document.getElementById('edit_email').value;
+    const editPhone = document.getElementById('edit_phone').value;
+    const editAddress = document.getElementById('edit_address').value;
+    const editAgentUsername = document.getElementById('edit_agent_username').value;
+    const editAgentPassword = document.getElementById('edit_agent_password').value;
+
+    fetch('/admin/consultancies/update/' + editConsultancyId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: editName,
+            contact_person: editContactPerson,
+            email: editEmail,
+            phone: editPhone,
+            address: editAddress,
+            agent_id: editAgentId,
+            agent_username: editAgentUsername,
+            agent_password: editAgentPassword
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            window.appAlert(result.message || 'Failed to update hostel');
+        }
+    })
+    .catch(() => {
+        window.appAlert('Failed to update hostel');
+    });
+};
+
+async function deleteConsultancy(id, name) {
+    const message = `Delete ${name}? This will permanently delete hostel, students, agents, and transactions.`;
+    const confirmed = typeof appConfirm === 'function'
+        ? await appConfirm(message)
+        : window.confirm(message);
+    if (!confirmed) return;
+    const f = document.createElement('form');
+    f.method = 'POST';
+    f.action = `/admin/consultancies/delete/${id}`;
+    document.body.appendChild(f);
+    f.submit();
+}
+</script>
+{% endblock %}
+

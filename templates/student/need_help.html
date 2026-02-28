@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Need Help...?{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Student Portal</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('student.dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('student.change_password') }}">Change Password</a></li>
+            <li><a href="{{ url_for('student.need_help') }}" class="active">Need Help...?</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Need Help...?</h1>
+        </div>
+
+        <div class="card" style="max-width: 760px;">
+            <h3 class="card-header">Consultant Contact Details</h3>
+            <div class="form-group">
+                <label class="form-label">Hostel</label>
+                <input class="form-control" value="{{ student.consultancy.name }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Hostel Code</label>
+                <input class="form-control" value="{{ student.consultancy.hostel_code }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Consultant / Contact Person</label>
+                <input class="form-control" value="{{ student.consultancy.contact_person }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-control" value="{{ student.consultancy.email }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-control" value="{{ student.consultancy.phone }}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Hostel Address</label>
+                <textarea class="form-control" rows="3" readonly>{{ student.consultancy.address or 'Not available' }}</textarea>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

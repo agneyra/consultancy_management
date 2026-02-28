@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Select Login - Sandip Hostel Services{% endblock %}
+
+{% block guest_nav_login %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .role-selector-wrap {
+        min-height: calc(100vh - 120px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        background:
+            radial-gradient(circle at 15% 15%, rgba(227, 27, 27, 0.08), transparent 35%),
+            radial-gradient(circle at 85% 85%, rgba(30, 41, 59, 0.12), transparent 40%);
+    }
+
+    .role-selector-content {
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .role-selector-panel {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        background: linear-gradient(135deg, #d9def5 0%, #cbd2f2 100%);
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        box-shadow: 0 24px 56px rgba(15, 23, 42, 0.16);
+        margin: 0 auto;
+        backdrop-filter: blur(8px);
+    }
+
+    .role-card {
+        position: relative;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        background: linear-gradient(160deg, #d9ddf8 0%, #c6ccf2 62%, #bbc4ec 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.45);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        overflow: hidden;
+        color: #1f2a56;
+    }
+
+    .role-card--dark {
+        background: linear-gradient(160deg, #1b2668 0%, #111a49 62%, #0b1337 100%);
+        color: #ffffff;
+    }
+
+    .role-card::before {
+        content: '';
+        position: absolute;
+        top: -35%;
+        left: -20%;
+        width: 140%;
+        height: 72%;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.08) 60%, transparent 100%);
+        transform: rotate(-7deg);
+        pointer-events: none;
+    }
+
+    .role-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent 45%);
+        pointer-events: none;
+    }
+
+    .role-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 28px rgba(15, 23, 42, 0.18);
+    }
+
+    .role-icon {
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.1rem;
+        font-weight: 700;
+        border: 3px solid rgba(255, 255, 255, 0.65);
+        background: linear-gradient(165deg, #f3f6ff 0%, #d8e1ff 100%);
+        color: #1f2a56;
+        box-shadow: inset 0 6px 12px rgba(255, 255, 255, 0.65), 0 10px 22px rgba(30, 41, 59, 0.14);
+        position: relative;
+        z-index: 1;
+    }
+
+    .role-card--dark .role-icon {
+        background: linear-gradient(165deg, #8fb4de 0%, #6f91bf 100%);
+        color: #0f204a;
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .role-title {
+        font-size: 2rem;
+        color: #0f172a;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .role-subtitle {
+        color: #475569;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    :root[data-theme="dark"] .role-title {
+        color: #e2e8f0;
+    }
+
+    :root[data-theme="dark"] .role-subtitle {
+        color: #cbd5e1;
+    }
+
+    :root[data-theme="dark"] .role-card:not(.role-card--dark) {
+        color: #1f2a56;
+    }
+
+    .role-card h3 {
+        font-size: 2rem;
+        margin: 0 0 1rem;
+        color: inherit;
+    }
+
+    .role-btn {
+        position: relative;
+        width: 100%;
+        max-width: 220px;
+        margin: 0 auto;
+        display: inline-block;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 700;
+        overflow: hidden;
+        border-radius: 10px;
+        box-shadow: 0 10px 20px rgba(227, 27, 27, 0.25);
+    }
+
+    .role-btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -130%;
+        width: 65%;
+        height: 100%;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.08));
+        transform: skewX(-22deg);
+        transition: left 0.45s ease;
+        pointer-events: none;
+    }
+
+    .role-btn:hover::after {
+        left: 140%;
+    }
+
+    .role-card--dark .role-btn {
+        background: #2f0d0d;
+    }
+
+    .role-card--dark .role-btn:hover {
+        background: #4b1515;
+    }
+
+    @media (max-width: 900px) {
+        html,
+        body,
+        .page-content {
+            overflow-x: hidden;
+        }
+
+        .role-selector-wrap,
+        .role-selector-content {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .role-selector-panel {
+            grid-template-columns: 1fr;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .role-selector-panel.animate-fadeIn {
+            animation: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="role-selector-wrap">
+    <div class="role-selector-content">
+            <h2 class="role-title">Select Login Type</h2>
+            <p class="role-subtitle">Choose your portal to continue.</p>
+
+            <div class="role-selector-panel animate-fadeIn">
+                <div class="role-card">
+                    <div class="role-icon">A</div>
+                    <h3>Admin Login</h3>
+                    <a href="{{ url_for('auth.role_login', role_key='admin', next=next_url) }}" class="btn btn-primary role-btn">
+                        Click Here
+                    </a>
+                </div>
+
+                <div class="role-card role-card--dark">
+                    <div class="role-icon">C</div>
+                    <h3>Consultant Login</h3>
+                    <a href="{{ url_for('auth.role_login', role_key='consultant', next=next_url) }}" class="btn btn-primary role-btn">
+                        Click Here
+                    </a>
+                </div>
+
+                <div class="role-card">
+                    <div class="role-icon">S</div>
+                    <h3>Student Login</h3>
+                    <a href="{{ url_for('auth.role_login', role_key='student', next=next_url) }}" class="btn btn-primary role-btn">
+                        Click Here
+                    </a>
+                </div>
+            </div>
+    </div>
+</div>
+{% endblock %}

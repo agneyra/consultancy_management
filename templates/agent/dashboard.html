@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Agent Panel</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{{ url_for('agent.dashboard') }}" class="active">Dashboard</a></li>
+            <li><a href="{{ url_for('agent.add_student_page') }}">Add Students</a></li>
+            <li><a href="{{ url_for('agent.students_data') }}">View Students</a></li>
+            <li><a href="{{ url_for('agent.change_password') }}">Change Password</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Agent Dashboard</h1>
+        </div>
+
+        <div class="filter-section" style="margin-bottom: 1rem;">
+            <form method="GET" action="{{ url_for('agent.dashboard') }}" class="filter-row" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="filter-group" style="min-width: 240px; flex: 1 1 260px;">
+                    <label class="form-label">Filter by Hostel</label>
+                    <select name="hostel_id" class="form-control">
+                        <option value="">All Hostels</option>
+                        {% for consultancy in consultancies %}
+                        <option value="{{ consultancy.id }}" {% if selected_hostel_id == consultancy.id %}selected{% endif %}>
+                            {{ consultancy.hostel_code }} - {{ consultancy.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group" style="min-width: 240px; flex: 1 1 260px;">
+                    <label class="form-label">Filter by Semester</label>
+                    <select name="semester" class="form-control">
+                        <option value="">All Semesters</option>
+                        {% for sem in range(1, 9) %}
+                        <option value="{{ sem }}" {% if selected_semester == sem %}selected{% endif %}>Semester {{ sem }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn filter-action-btn filter-apply-btn">Apply Filters</button>
+                <a href="{{ url_for('agent.dashboard') }}" class="btn filter-action-btn filter-reset-btn">Reset</a>
+            </form>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Fees</div>
+                <div class="stat-value">{{ stats.total_fees | inr }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Paid</div>
+                <div class="stat-value">{{ stats.fees_paid | inr }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fees Pending</div>
+                <div class="stat-value">{{ stats.fees_pending | inr }}</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3 class="chart-title">
+                Fee Distribution
+                {% if selected_semester %}(Semester {{ selected_semester }}){% endif %}
+            </h3>
+            <canvas id="feeChart" data-total="{{ stats.total_fees }}" data-paid="{{ stats.fees_paid }}"
+                data-pending="{{ stats.fees_pending }}"></canvas>
+        </div>
+
+        <div class="card">
+            <h3 class="card-header">Quick Stats</h3>
+            <p>Total Students: {{ stats.total_students }}</p>
+        </div>
+
+        <div class="card">
+            <h3 class="card-header">Assigned Hostels</h3>
+            {% if hostel_blocks %}
+            <div class="stats-grid">
+                {% for hostel in hostel_blocks %}
+                <div class="stat-card">
+                    <div class="stat-label">{{ hostel.hostel_code }} - {{ hostel.hostel_name }}</div>
+                    <div style="font-size: 0.95rem; margin-top: 0.5rem;">Students: {{ hostel.students }}</div>
+                    <div style="font-size: 0.95rem;">Total: {{ hostel.total_fees | inr }}</div>
+                    <div style="font-size: 0.95rem;">Paid: {{ hostel.fees_paid | inr }}</div>
+                    <div style="font-size: 0.95rem;">Pending: {{ hostel.fees_pending | inr }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No hostels assigned yet.</p>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}
