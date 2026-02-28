@@ -10,19 +10,19 @@ from flask import Blueprint, jsonify
 from sqlalchemy import text
 from utils.email import send_reset_otp
 from flask_sqlalchemy import SQLAlchemy
+from models.database import db # This is the CORRECT db instance
+from models.user import User
 app = Flask(__name__)
+# Initialize database
+db.init_app(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
 from utils.filters import format_inr
 
 app.jinja_env.filters['inr'] = format_inr
 
 app.config.from_object(Config)
-
-# Initialize database
-db.init_app(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy()
 
 # Initialize login manager
 login_manager = LoginManager()
